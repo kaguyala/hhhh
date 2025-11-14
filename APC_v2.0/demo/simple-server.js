@@ -18,11 +18,8 @@ const sequelize = new Sequelize('sqlite::memory:', {
 });
 
 // GLM API 密钥和URL
-const GLM_API_KEY = '5176ce390ab84303aa7dae35d3be6f6a.JqWhdfhvZAhKIJCd';
+const GLM_API_KEY = process.env.ZHIPUAI_API_KEY || '5176ce390ab84303aa7dae35d3be6f6a.JqWhdfhvZAhKIJCd';
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-
-// 添加默认JWT密钥
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key_for_development';
 
 // 定义 User 模型
 class User extends Model { }
@@ -41,6 +38,10 @@ User.init({
   password_hash: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   sequelize,
@@ -321,6 +322,57 @@ app.listen(PORT, async () => {
     }
   } catch (error) {
     console.error('Database sync error:', error);
+    
+    // 如果MySQL连接失败，使用SQLite内存数据库
+    if (!useSQLite) {
+      console.log('切换到SQLite内存数据库...');
+      sequelize = new Sequelize('sqlite::memory:', {
+        logging: false,
+        storage: ':memory:'
+      });
+      
+      User.init({
+        user_id: {
+          type: DataTypes.INTEGER,
+          autoIncrement: true,
+          primaryKey: true
+        },
+        username: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          unique: true
+        },
+        password_hash: {
+          type: DataTypes.STRING,
+          allowNull: false
+        },
+        email: {
+          type: DataTypes.STRING,
+          allowNull: true
+        }
+      }, {
+        sequelize,
+        modelName: 'User',
+        tableName: 'users',
+        timestamps: false
+      });
+      
+      try {
+        await sequelize.sync();
+        console.log('SQLite数据库同步成功');
+        
+        // 创建测试用户
+        const hashedPassword = await bcrypt.hash('testpassword', SALT_ROUNDS);
+        await User.create({
+          username: 'testuser',
+          password_hash: hashedPassword,
+          email: 'test@example.com'
+        });
+        console.log('Test user created (username: testuser, password: testpassword)');
+      } catch (sqliteError) {
+        console.error('SQLite数据库同步失败:', sqliteError);
+      }
+    }
   }
 
   // 显示当前使用的AI模型

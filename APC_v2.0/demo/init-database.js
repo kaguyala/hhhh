@@ -27,6 +27,7 @@ console.log('- 主机:', DB_HOST);
 console.log('- 端口:', DB_PORT);
 console.log('- 数据库名:', DB_NAME);
 console.log('- 用户名:', DB_USER);
+// 不显示密码
 console.log('- 密码: [HIDDEN]');
 
 async function initDatabase() {
@@ -58,120 +59,116 @@ async function initDatabase() {
         });
         console.log('✓ 使用root用户连接成功');
       } catch (rootError) {
-        console.error('✗ 无法连接到MySQL服务器，请检查MySQL服务是否运行以及凭证是否正确');
-        console.error('错误详情:', rootError.message);
-        console.log('\n请检查以下事项:');
-        console.log('1. MySQL服务是否正在运行');
-        console.log('2. 提供的用户名和密码是否正确');
-        console.log('3. 用户是否具有连接权限');
-        process.exit(1);
+        console.error('✗ 使用root用户连接也失败:', rootError.message);
+        console.log('\n请确保：');
+        console.log('1. MySQL服务正在运行');
+        console.log('2. 提供的数据库连接信息正确');
+        console.log('3. root用户密码正确（如果需要）');
+        throw new Error('无法连接到MySQL服务器');
       }
     }
-
-    // 创建数据库
-    console.log('\n2. 创建数据库...');
-    try {
+    
+    console.log('\n2. 检查数据库是否存在...');
+    const [dbResults] = await connection.execute(
+      'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?',
+      [DB_NAME]
+    );
+    
+    if (dbResults.length > 0) {
+      console.log(`✓ 数据库 ${DB_NAME} 已存在`);
+    } else {
+      console.log(`→ 创建数据库 ${DB_NAME}...`);
       await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`);
-      console.log('✓ 数据库创建成功或已存在');
-    } catch (error) {
-      console.error('✗ 创建数据库失败:', error.message);
-      throw error;
+      console.log(`✓ 数据库 ${DB_NAME} 创建成功`);
     }
-
-    // 创建用户并授予权限
-    console.log('\n3. 创建用户并授予权限...');
+    
+    console.log('\n3. 检查用户是否存在...');
     try {
-      // 对于MySQL 8.0+，使用新的权限语法
-      // 修复SQL语法错误，不能对CREATE USER语句使用参数化查询
-      await connection.execute(`CREATE USER IF NOT EXISTS '${DB_USER}'@'${DB_HOST}' IDENTIFIED BY '${DB_PASSWORD}'`);
-      await connection.execute(`CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}'`);
-      console.log('✓ 用户创建成功或已存在');
+      const [userResults] = await connection.execute(
+        'SELECT User, Host FROM mysql.user WHERE User = ?',
+        [DB_USER]
+      );
       
-      // 授予权限
-      await connection.execute(`GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'${DB_HOST}'`);
-      await connection.execute(`GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'`);
-      await connection.execute('FLUSH PRIVILEGES');
-      console.log('✓ 权限授予成功');
-    } catch (error) {
-      // 如果权限不足，提供友好的错误信息
-      if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-        console.error('✗ 权限不足，无法创建用户或授予权限');
-        console.log('请确保使用的用户具有以下权限:');
-        console.log('- CREATE USER 权限');
-        console.log('- GRANT 权限');
-        console.log('- 对目标数据库的管理权限');
+      if (userResults.length > 0) {
+        console.log(`✓ 用户 ${DB_USER} 已存在`);
       } else {
-        console.error('✗ 创建用户或授予权限失败:', error.message);
+        console.log(`→ 创建用户 ${DB_USER}...`);
+        // MySQL 8.0+ 使用新的认证插件
+        try {
+          await connection.execute(
+            `CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED WITH mysql_native_password BY ?`,
+            [DB_USER, DB_PASSWORD]
+          );
+        } catch (e) {
+          // 如果上面的方法失败，尝试传统方法
+          await connection.execute(
+            `CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`,
+            [DB_USER, DB_PASSWORD]
+          );
+        }
+        console.log(`✓ 用户 ${DB_USER} 创建成功`);
       }
-      throw error;
-    }
-
-    // 测试连接
-    console.log('\n4. 测试数据库连接...');
-    try {
-      const testConnection = await mysql.createConnection({
-        host: DB_HOST,
-        port: DB_PORT,
-        user: DB_USER,
-        password: DB_PASSWORD,
-        database: DB_NAME
-      });
-      
-      await testConnection.execute('SELECT 1+1 as result');
-      await testConnection.end();
-      console.log('✓ 数据库连接测试成功');
     } catch (error) {
-      console.error('✗ 数据库连接测试失败:', error.message);
-      throw error;
+      console.log('⚠️  用户检查/创建过程中出现警告（可能没有足够权限），将继续执行...');
     }
-
+    
+    console.log('\n4. 授予用户权限...');
+    try {
+      await connection.execute(`GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO ?@'%'`, [DB_USER]);
+      await connection.execute('FLUSH PRIVILEGES');
+      console.log(`✓ 用户 ${DB_USER} 已获得数据库 ${DB_NAME} 的所有权限`);
+    } catch (error) {
+      console.log('⚠️  权限授予过程中出现警告（可能没有足够权限），将继续执行...');
+    }
+    
+    console.log('\n5. 测试数据库连接...');
+    const testConnection = await mysql.createConnection({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME
+    });
+    
+    await testConnection.execute('SELECT 1');
+    await testConnection.end();
+    console.log('✓ 数据库连接测试成功');
+    
+    await connection.end();
+    
     console.log('\n🎉 数据库初始化完成！');
     console.log('\n请确保你的 .env 文件包含以下配置:');
-    console.log(`
-# 数据库配置
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-`);
-    
-    // 如果没有.env文件，创建一个示例
-    const envPath = path.join(__dirname, '.env');
-    if (!fs.existsSync(envPath)) {
-      const envContent = `# 数据库配置
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-
-# JWT密钥 (请替换为更强的密钥)
-JWT_SECRET=7ZxQ#9kP2!rT5wG8mB3vF6jH1nD4sK7pA0lC2dE5gR8tY1uI3oP6zX9cV2bN5mK8pQ1sT4wG7jZ3
-`;
-      fs.writeFileSync(envPath, envContent);
-      console.log('\n✅ 已创建 .env 文件，请根据需要修改其中的配置');
-    }
+    console.log('\n# 数据库配置');
+    console.log(`DB_HOST=${DB_HOST}`);
+    console.log(`DB_PORT=${DB_PORT}`);
+    console.log(`DB_NAME=${DB_NAME}`);
+    console.log(`DB_USER=${DB_USER}`);
+    console.log(`DB_PASSWORD=${DB_PASSWORD}`);
     
   } catch (error) {
-    console.error('\n❌ 数据库初始化过程中发生错误:');
-    console.error(error.message);
-    process.exit(1);
-  } finally {
+    console.error('\n❌ 数据库初始化过程中出现错误:');
+    console.error('错误信息:', error.message);
+    
     if (connection) {
-      await connection.end();
+      await connection.end().catch(() => {});
     }
+    
+    // 如果是权限错误，给出更友好的提示
+    if (error.message.includes('Access denied') || error.message.includes('ER_ACCESS_DENIED_ERROR')) {
+      console.log('\n💡 提示:');
+      console.log('   如果您看到权限相关的错误，请尝试以下解决方案:');
+      console.log('   1. 确保提供了正确的root密码 (DB_ROOT_PASSWORD)');
+      console.log('   2. 或者手动创建数据库和用户，然后更新.env文件');
+      console.log('   3. 参考 DATABASE_SETUP.md 文件了解更多手动设置方法');
+    }
+    
+    process.exit(1);
   }
 }
 
-// 检查是否安装了必要的依赖
-try {
-  require('mysql2/promise');
-  require('dotenv');
-} catch (error) {
-  console.error('缺少必要的依赖，请先运行: npm install');
-  process.exit(1);
+// 只有在直接运行此脚本时才执行初始化
+if (require.main === module) {
+  initDatabase();
 }
 
-// 执行初始化
-initDatabase();
+module.exports = { initDatabase };

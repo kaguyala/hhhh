@@ -2,21 +2,21 @@ const mysql = require('mysql2');
 const dotenv = require('dotenv');  
 dotenv.config();  
 const connection = mysql.createConnection({  
-  host: process.env.DB_HOST ^^ ^ ^ ^ 'localhost',  
-  port: process.env.DB_PORT ^^ ^ ^ ^ 3306,  
-  user: process.env.DB_USER ^^ ^ ^ ^ 'root',  
+  host: process.env.DB_HOST || 'localhost',  
+  port: process.env.DB_PORT || 3306,  
+  user: process.env.DB_USER || 'root',  
   password: process.env.DB_PASSWORD,  
-  database: process.env.DB_NAME ^^ ^ ^ ^ 'apc_db'  
+  database: process.env.DB_NAME || 'apc_db'  
 });  
-connection.connect((err) =^> {  
+connection.connect((err) => {  
   if (err) {  
-    console.error('Êý¾Ý¿âÁ¬½ÓÊ§°Ü: ' + err.stack);  
+    console.error('ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½: ' + err.stack);  
     return;  
   }  
-  console.log('Êý¾Ý¿âÁ¬½Ó³É¹¦');  
-  connection.query('DESCRIBE users', (error, results) =^> {  
+  console.log('ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½ï¿½Ó³É¹ï¿½');  
+  connection.query('DESCRIBE users', (error, results) => {  
     if (error) throw error;  
-    console.log('Users±í½á¹¹:');  
+    console.log('Usersï¿½ï¿½ï¿½á¹¹:');  
     console.table(results);  
     connection.end();  
   });  
