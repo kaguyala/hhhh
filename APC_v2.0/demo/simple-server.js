@@ -10,11 +10,36 @@ const bcrypt = require('bcryptjs');
 const { Sequelize, DataTypes, Model } = require('sequelize');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
+require('dotenv').config(); // 加载环境变量
 
-// 初始化 Sequelize 实例（使用内存数据库用于演示）
-const sequelize = new Sequelize('sqlite::memory:', {
+// 从环境变量获取数据库配置
+const dbName = process.env.DB_NAME || 'apc_db';
+const dbUser = process.env.DB_USER || 'root';
+const dbPassword = process.env.DB_PASSWORD || '';
+const dbHost = process.env.DB_HOST || 'localhost';
+const dbPort = process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306;
+
+console.log('数据库配置信息:', { 
+  dbName, 
+  dbUser, 
+  dbHost, 
+  dbPort,
+  dbPassword: dbPassword ? '[HIDDEN]' : '[EMPTY]'
+});
+
+// 初始化 Sequelize 实例（使用MySQL数据库）
+const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
+  host: dbHost,
+  port: dbPort,
+  dialect: 'mysql',
   logging: false,
-  storage: ':memory:'
+  dialectOptions: {
+    timezone: '+08:00',
+  },
+  define: {
+    charset: 'utf8mb4',
+    collate: 'utf8mb4_general_ci'
+  }
 });
 
 // GLM API 密钥和URL

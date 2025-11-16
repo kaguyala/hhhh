@@ -71,5 +71,8 @@ User.init({
   sequelize,
   modelName: 'User',
   tableName: 'users',
-  timestamps: true // 启用时间戳
+  timestamps: true, // 启用时间戳
+  // 为时间戳字段设置默认值，避免MySQL的NO_ZERO_DATE限制
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });

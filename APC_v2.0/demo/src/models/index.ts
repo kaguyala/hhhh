@@ -26,7 +26,9 @@ export const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
   dialect: 'mysql',
   logging: console.log, // 启用SQL日志以便调试
   dialectOptions: {
-    multipleStatements: true
+    multipleStatements: true,
+    // 添加对零日期的兼容性设置
+    timezone: '+08:00',
   },
   define: {
     charset: 'utf8mb4',
