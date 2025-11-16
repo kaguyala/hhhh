@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>情绪追踪 - 心灵伴侣</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -575,11 +576,6 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="moodChart"></canvas>
-                    <!-- 这里将使用Chart.js或其他图表库来显示情绪趋势 -->
-                    <div style="text-align: center; padding-top: 150px; color: #999;">
-                        <p>情绪图表将在此处显示</p>
-                        <p>登录后可查看您的情绪追踪数据</p>
-                    </div>
                 </div>
             </div>
 
@@ -589,32 +585,8 @@
                     <h2>情绪历史记录</h2>
                     <p>您的近期情绪记录</p>
                 </div>
-                <div class="records-list">
-                    <div class="record-item">
-                        <div class="record-date">2025-11-09 20:30</div>
-                        <div class="record-mood">😊</div>
-                        <div class="record-description">工作顺利完成，感到轻松</div>
-                    </div>
-                    <div class="record-item">
-                        <div class="record-date">2025-11-09 12:15</div>
-                        <div class="record-mood">😐</div>
-                        <div class="record-description">午餐时间，情绪平稳</div>
-                    </div>
-                    <div class="record-item">
-                        <div class="record-date">2025-11-08 18:45</div>
-                        <div class="record-mood">😄</div>
-                        <div class="record-description">和朋友聚会很开心</div>
-                    </div>
-                    <div class="record-item">
-                        <div class="record-date">2025-11-08 09:30</div>
-                        <div class="record-mood">😔</div>
-                        <div class="record-description">早晨起床感觉有些焦虑</div>
-                    </div>
-                    <div class="record-item">
-                        <div class="record-date">2025-11-07 21:00</div>
-                        <div class="record-mood">😊</div>
-                        <div class="record-description">看完一本好书，心情愉悦</div>
-                    </div>
+                <div class="records-list" id="records-list">
+                    <!-- 动态加载记录 -->
                 </div>
             </div>
         </div>
@@ -663,53 +635,295 @@
     </footer>
 
     <script>
+        // 全局变量
+        let moodChart = null;
+        const moodIcons = {
+            1: '😢',
+            2: '😔',
+            3: '😐',
+            4: '😊',
+            5: '😄'
+        };
+
         // 情绪选择功能
         document.addEventListener('DOMContentLoaded', function() {
-            const moodOptions = document.querySelectorAll('.mood-option');
-            const moodValueInput = document.getElementById('mood-value');
-            
-            moodOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    // 移除所有选项的选中状态
-                    moodOptions.forEach(opt => opt.classList.remove('selected'));
-                    
-                    // 添加当前选项的选中状态
-                    this.classList.add('selected');
-                    
-                    // 设置隐藏输入字段的值
-                    moodValueInput.value = this.dataset.mood;
+            try {
+                const moodOptions = document.querySelectorAll('.mood-option');
+                const moodValueInput = document.getElementById('mood-value');
+                
+                if (moodOptions.length === 0 || !moodValueInput) {
+                    console.error('关键元素未找到');
+                    return;
+                }
+
+                moodOptions.forEach(option => {
+                    option.addEventListener('click', function() {
+                        // 移除所有选项的选中状态
+                        moodOptions.forEach(opt => opt.classList.remove('selected'));
+                        
+                        // 添加当前选项的选中状态
+                        this.classList.add('selected');
+                        
+                        // 设置隐藏输入字段的值
+                        moodValueInput.value = this.dataset.mood;
+                    });
                 });
-            });
-            
-            // 表单提交处理
-            const moodForm = document.getElementById('mood-form');
-            if (moodForm) {
-                moodForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // 获取表单数据
-                    const mood = moodValueInput.value;
-                    const description = document.getElementById('mood-description').value;
-                    const tags = document.getElementById('mood-tags').value;
-                    
-                    if (!mood) {
-                        alert('请选择您的情绪');
-                        return;
-                    }
-                    
-                    // 这里应该将数据发送到服务器
-                    console.log('提交情绪数据:', { mood, description, tags });
-                    alert('情绪记录已保存！');
-                    
-                    // 重置表单
-                    moodForm.reset();
-                    moodOptions.forEach(opt => opt.classList.remove('selected'));
-                });
+                
+                // 表单提交处理
+                const moodForm = document.getElementById('mood-form');
+                if (moodForm) {
+                    moodForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        // 获取表单数据
+                        const mood = moodValueInput.value;
+                        const description = document.getElementById('mood-description')?.value || '';
+                        const tags = document.getElementById('mood-tags')?.value || '';
+                        
+                        if (!mood) {
+                            alert('请选择您的情绪');
+                            return;
+                        }
+                        
+                        // 发送到服务器
+                        saveMoodData({ mood, description, tags });
+                    });
+                }
+                
+                // 检查用户登录状态
+                checkUserStatus();
+                
+                // 如果用户已登录，加载情绪数据
+                const token = localStorage.getItem('token');
+                if (token) {
+                    console.log('Token found, loading mood data...');
+                    loadMoodData();
+                } else {
+                    console.log('No token found, user not logged in.');
+                }
+            } catch (error) {
+                console.error('初始化时发生错误:', error);
+            }
+        });
+        
+        // 保存情绪数据
+        function saveMoodData(data) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('请先登录');
+                return;
             }
             
-            // 检查用户登录状态
-            checkUserStatus();
-        });
+            // 在实际应用中，这里应该将数据发送到服务器
+            // 暂时使用localStorage模拟
+            let moodRecords = JSON.parse(localStorage.getItem('moodRecords') || '[]');
+            moodRecords.push({
+                ...data,
+                date: new Date().toISOString()
+            });
+            localStorage.setItem('moodRecords', JSON.stringify(moodRecords));
+            
+            alert('情绪记录已保存！');
+            
+            // 重置表单
+            document.getElementById('mood-form').reset();
+            document.querySelectorAll('.mood-option').forEach(opt => opt.classList.remove('selected'));
+            document.getElementById('mood-value').value = '';
+            
+            // 重新加载图表和历史记录
+            loadMoodData();
+        }
+        
+        // 加载情绪数据
+        function loadMoodData() {
+            try {
+                const recordsRaw = localStorage.getItem('moodRecords');
+                console.log('原始记录数据:', recordsRaw);
+
+                if (!recordsRaw) {
+                    console.log('没有找到情绪记录数据');
+                    updateHistoryRecords([]);
+                    updateMoodChart([]);
+                    return;
+                }
+
+                let moodRecords = JSON.parse(recordsRaw);
+                
+                if (!Array.isArray(moodRecords)) {
+                    console.error('情绪记录数据格式错误，应为数组');
+                    moodRecords = [];
+                }
+
+                // 按日期排序，最新的在前面
+                moodRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+                console.log('解析并排序后的记录:', moodRecords);
+                
+                // 更新历史记录
+                updateHistoryRecords(moodRecords);
+                
+                // 更新图表
+                updateMoodChart(moodRecords);
+            } catch (error) {
+                console.error('加载情绪数据时发生错误:', error);
+                alert('加载情绪数据失败，请稍后重试。');
+                updateHistoryRecords([]);
+                updateMoodChart([]);
+            }
+        }
+        
+        // 更新历史记录
+        function updateHistoryRecords(records) {
+            const recordsList = document.getElementById('records-list');
+            recordsList.innerHTML = '';
+            
+            if (records.length === 0) {
+                recordsList.innerHTML = '<p style="text-align: center; color: #999;">暂无情绪记录</p>';
+                return;
+            }
+            
+            // 只显示最近的10条记录
+            const recentRecords = records.slice(0, 10);
+            
+            recentRecords.forEach(record => {
+                const recordItem = document.createElement('div');
+                recordItem.className = 'record-item';
+                
+                const date = new Date(record.date);
+                const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                
+                recordItem.innerHTML = `
+                    <div class="record-date">${formattedDate}</div>
+                    <div class="record-mood">${moodIcons[record.mood]}</div>
+                    <div class="record-description">${record.description || '无描述'}</div>
+                `;
+                
+                recordsList.appendChild(recordItem);
+            });
+        }
+        
+        // 更新情绪图表
+        function updateMoodChart(records) {
+            try {
+                const chartCanvas = document.getElementById('moodChart');
+                if (!chartCanvas) {
+                    console.error('未找到图表画布元素');
+                    return;
+                }
+                const ctx = chartCanvas.getContext('2d');
+                
+                // 如果已有图表实例，先销毁
+                if (moodChart) {
+                    moodChart.destroy();
+                }
+                
+                // 获取最近7天的数据
+                const last7Days = getLast7Days();
+                const moodData = last7Days.map(day => {
+                    const dayRecords = records.filter(record => {
+                        const recordDate = new Date(record.date);
+                        return recordDate.toDateString() === day.toDateString();
+                    });
+                    
+                    if (dayRecords.length === 0) return null;
+                    
+                    // 计算当天平均情绪值
+                    const sum = dayRecords.reduce((acc, record) => {
+                        const moodVal = parseInt(record.mood);
+                        return isNaN(moodVal) ? acc : acc + moodVal;
+                    }, 0);
+                    const avg = sum / dayRecords.length;
+                    return isNaN(avg) ? null : avg.toFixed(1);
+                });
+                
+                console.log('用于图表的数据:', { labels: last7Days.map(d => d.toLocaleDateString()), data: moodData });
+
+                // 创建图表
+                moodChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: last7Days.map(day => {
+                            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                            return weekdays[day.getDay()];
+                        }),
+                        datasets: [{
+                            label: '情绪指数',
+                            data: moodData,
+                            borderColor: '#6a67ce',
+                            backgroundColor: 'rgba(106, 103, 206, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: moodData.map((value, index) => {
+                                if (value === null) return '#ccc';
+                                const val = parseFloat(value);
+                                if (val >= 4) return '#4CAF50';
+                                if (val >= 3) return '#8BC34A';
+                                if (val >= 2) return '#FFC107';
+                                return '#F44336';
+                            }),
+                            pointRadius: 8,
+                            pointHoverRadius: 10,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: 1,
+                                max: 5,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        return moodIcons[value] || value;
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    font: {
+                                        size: 14
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const moodValue = context.parsed.y;
+                                        const moodText = {
+                                            1: '非常难过',
+                                            2: '难过',
+                                            3: '一般',
+                                            4: '开心',
+                                            5: '非常开心'
+                                        }[Math.round(moodValue)] || '未知';
+                                        
+                                        return `情绪: ${moodText} (${moodValue})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('更新图表时发生错误:', error);
+                document.getElementById('moodChart').parentElement.innerHTML += '<p style="color: red; text-align: center;">图表加载失败</p>';
+            }
+        }
+        
+        // 获取最近7天的日期
+        function getLast7Days() {
+            const dates = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                dates.push(date);
+            }
+            return dates;
+        }
         
         // 检查用户状态并更新UI
         function checkUserStatus() {
@@ -803,6 +1017,10 @@
                         if (userButton) userButton.textContent = 'U'; // 重置为默认值
                         
                         alert('已成功登出');
+                        // 清空情绪记录
+                        localStorage.removeItem('moodRecords');
+                        // 重新加载页面
+                        location.reload();
                     });
                 }
                 
