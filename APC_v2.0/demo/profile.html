@@ -1700,6 +1700,12 @@
                 document.getElementById(modalId).style.display = 'none';
             }
             
+            // 添加这个函数来处理用户头像点击事件
+            function handleUserAvatarClick() {
+                // 在个人主页中，双击头像可以刷新页面或者执行其他操作
+                console.log("用户在个人主页点击了头像");
+            }
+            
             // 生成心理评估报告
             async function generatePsychologicalAssessment() {
                 try {
@@ -1895,6 +1901,12 @@
                     event.target.style.display = 'none';
                 }
             });
+            
+            // 绑定用户头像点击事件
+            const avatarElement = document.querySelector('.avatar');
+            if (avatarElement) {
+                avatarElement.addEventListener('click', handleUserAvatarClick);
+            }
         });
     </script>
 </body>

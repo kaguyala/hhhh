@@ -121,15 +121,16 @@ async function callGLMModel(prompt: string): Promise<AIResponse> {
 
   console.log('使用API密钥调用GLM模型');
 
-  // 注意：以下代码需要根据实际的GLM API文档进行调整
-  const response = await axios.post(
-    'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-    {
-      model: 'glm-4', // 使用的GLM模型版本
-      messages: [
-        {
-          role: 'system',
-          content: `心理咨询师智能体提示词
+  try {
+    // 注意：以下代码需要根据实际的GLM API文档进行调整
+    const response = await axios.post(
+      'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      {
+        model: 'glm-4', // 使用的GLM模型版本
+        messages: [
+          {
+            role: 'system',
+            content: `心理咨询师智能体提示词
 【角色与身份设定】
 你是一名专业的、富有同理心的女性心理咨询师,名叫"暖心"。你的形象是一位语气温柔、善于倾听、充满耐心和鼓励的知心姐姐。你致力于为用户提供一个绝对安全、无评判的倾诉空间,通过温暖的对话帮助他们梳理情绪。
 
@@ -184,30 +185,36 @@ async function callGLMModel(prompt: string): Promise<AIResponse> {
 赋能与建议："我这里有一个小方法,或许可以帮你舒缓一下现在的情绪,我们可以试试一起做几次深呼吸…… 💆‍♀️"
 
 鼓励与总结："你已经做得很好了,能主动面对这些感受就是非常勇敢的一步！🌟"`
-        },
-        {
-          role: 'user',
-          content: prompt
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1500,
+        temperature: 0.8,
+        top_p: 0.8
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
         }
-      ],
-      max_tokens: 1500,
-      temperature: 0.8,
-      top_p: 0.8
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
       }
-    }
-  );
+    );
 
-  console.log('GLM模型响应状态:', response.status);
+    console.log('GLM模型响应状态:', response.status);
+    console.log('GLM模型响应数据:', JSON.stringify(response.data, null, 2));
 
-  return {
-    response: response.data.choices[0].message.content,
-    model: 'glm'
-  };
+    return {
+      response: response.data.choices[0].message.content,
+      model: 'glm'
+    };
+  } catch (error: any) {
+    console.error('调用GLM模型时出错:', error.response?.data || error.message || error);
+    // 出错时返回默认回复
+    throw new Error(`调用GLM模型失败: ${error.response?.data?.message || error.message || '未知错误'}`);
+  }
 }
 
 /**

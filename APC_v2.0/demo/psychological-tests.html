@@ -1029,6 +1029,13 @@
                     });
                 }
                 
+                // 添加用户头像双击事件，直接跳转到个人主页
+                if (userButton) {
+                    userButton.addEventListener('dblclick', function() {
+                        window.location.href = 'profile.html';
+                    });
+                }
+                
                 if (profileBtn) {
                     profileBtn.addEventListener('click', function() {
                         window.location.href = 'profile.html';

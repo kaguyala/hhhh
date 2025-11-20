@@ -561,13 +561,6 @@
         </div>
     </header>
 
-    <!-- 英雄区域 -->
-    <section class="hero">
-        <div class="container">
-            <h1>AI心理咨询师<br>专业支持，随时陪伴</h1>
-            <p>基于认知行为疗法(CBT)的专业心理支持，24小时在线，保护隐私，帮助您缓解压力、焦虑和抑郁情绪。</p>
-        </div>
-    </section>
 
     <!-- 聊天界面 -->
     <section class="chat-section" id="chat">
@@ -733,7 +726,14 @@
                             // 移除"AI正在输入"提示
                             removeTypingIndicator(aiTyping);
                             console.error('Error sending message:', error);
-                            addMessage('抱歉，我现在无法很好地处理你的问题。请稍后再试。', 'ai');
+                            // 显示更具体的错误信息
+                            if (error instanceof TypeError && error.message.includes('fetch')) {
+                                addMessage('错误：无法连接到AI服务，请检查网络连接或稍后再试。', 'ai');
+                            } else {
+                                // 显示具体的错误信息
+                                const errorMessage = error.message || '抱歉，我现在无法很好地处理你的问题。请稍后再试。';
+                                addMessage(`错误：${errorMessage}`, 'ai');
+                            }
                         }
                     } catch (error) {
                         console.error('Error in sendMessage:', error);
@@ -897,6 +897,24 @@
                     }
                 }
 
+                // 用户按钮点击事件处理函数
+                function handleUserButtonClick(e) {
+                    try {
+                        const userMenu = document.getElementById('user-menu');
+                        if (userMenu) {
+                            e.stopPropagation();
+                            userMenu.classList.toggle('show');
+                        }
+                    } catch (error) {
+                        console.error('Error in user button click handler:', error);
+                    }
+                }
+
+                // 添加这个函数来处理用户头像点击跳转到个人主页
+                function handleUserProfileClick() {
+                    window.location.href = 'profile.html';
+                }
+
                 // 绑定用户菜单事件
                 function bindUserMenuEvents() {
                     try {
@@ -910,6 +928,12 @@
                             userButton.removeEventListener('click', handleUserButtonClick);
                             // 添加新的事件监听器
                             userButton.addEventListener('click', handleUserButtonClick);
+                        }
+                        
+                        // 添加用户头像点击事件，直接跳转到个人主页
+                        if (userButton) {
+                            userButton.removeEventListener('dblclick', handleUserProfileClick);
+                            userButton.addEventListener('dblclick', handleUserProfileClick);
                         }
                         
                         if (profileBtn) {
@@ -949,19 +973,6 @@
                         });
                     } catch (error) {
                         console.error('Error binding user menu events:', error);
-                    }
-                }
-                
-                // 用户按钮点击事件处理函数
-                function handleUserButtonClick(e) {
-                    try {
-                        const userMenu = document.getElementById('user-menu');
-                        if (userMenu) {
-                            e.stopPropagation();
-                            userMenu.classList.toggle('show');
-                        }
-                    } catch (error) {
-                        console.error('Error in user button click handler:', error);
                     }
                 }
 
