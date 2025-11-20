@@ -701,10 +701,101 @@
                 } else {
                     console.log('No token found, user not logged in.');
                 }
+                
+                // 绑定用户菜单事件
+                bindUserMenuEvents();
             } catch (error) {
                 console.error('初始化时发生错误:', error);
             }
         });
+        
+        // 用户按钮点击事件处理函数
+        function handleUserButtonClick(e) {
+            try {
+                const userMenu = document.getElementById('user-menu');
+                const userButton = document.getElementById('user-button');
+                if (userMenu && userButton) {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('show');
+                }
+            } catch (error) {
+                console.error('Error in user button click handler:', error);
+            }
+        }
+        
+        // 处理用户头像双击跳转到个人主页
+        function handleUserProfileClick() {
+            window.location.href = 'profile.html';
+        }
+        
+        // 绑定用户菜单事件
+        function bindUserMenuEvents() {
+            try {
+                const userButton = document.getElementById('user-button');
+                const userMenu = document.getElementById('user-menu');
+                const logoutBtn = document.getElementById('logout-btn');
+                const profileBtn = document.getElementById('profile-btn');
+                
+                if (userButton) {
+                    // 移除可能存在的旧事件监听器，防止重复绑定
+                    userButton.removeEventListener('click', handleUserButtonClick);
+                    // 添加新的事件监听器
+                    userButton.addEventListener('click', handleUserButtonClick);
+                }
+                
+                // 添加用户头像双击事件，直接跳转到个人主页
+                if (userButton) {
+                    userButton.removeEventListener('dblclick', handleUserProfileClick);
+                    userButton.addEventListener('dblclick', handleUserProfileClick);
+                }
+                
+                if (profileBtn) {
+                    profileBtn.removeEventListener('click', () => {});
+                    profileBtn.addEventListener('click', function() {
+                        // 跳转到用户个人信息页面
+                        window.location.href = 'profile.html';
+                    });
+                }
+                
+                if (logoutBtn) {
+                    logoutBtn.removeEventListener('click', () => {});
+                    logoutBtn.addEventListener('click', function() {
+                        // 清除用户信息
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('userProfile');
+                        
+                        // 隐藏用户菜单
+                        if (userMenu) userMenu.classList.remove('show');
+                        
+                        // 隐藏用户信息按钮，显示登录按钮
+                        const userInfo = document.getElementById('user-info');
+                        const authButton = document.getElementById('auth-button');
+                        const userButton = document.getElementById('user-button');
+                        if (userInfo) userInfo.style.display = 'none';
+                        if (authButton) authButton.style.display = 'block';
+                        if (userButton) userButton.textContent = 'U'; // 重置为默认值
+                        
+                        alert('已成功登出');
+                        
+                        // 清空情绪记录
+                        localStorage.removeItem('moodRecords');
+                        // 重新加载页面
+                        location.reload();
+                    });
+                }
+                
+                // 点击页面其他地方隐藏菜单
+                document.removeEventListener('click', function(e) {});
+                document.addEventListener('click', function(e) {
+                    if (userMenu && !userMenu.contains(e.target) && userButton !== e.target) {
+                        userMenu.classList.remove('show');
+                    }
+                });
+            } catch (error) {
+                console.error('Error binding user menu events:', error);
+            }
+        }
         
         // 保存情绪数据
         function saveMoodData(data) {

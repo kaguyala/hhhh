@@ -1000,7 +1000,7 @@
                     <div class="assessment-content">
                         <div class="assessment-header">
                             <p>基于您的情绪记录和AI分析的心理健康评估报告</p>
-                            <button class="generate-assessment-btn" onclick="generatePsychologicalAssessment()">
+                            <button class="generate-assessment-btn">
                                 <i class="fas fa-sync-alt"></i> 重新生成评估
                             </button>
                         </div>
@@ -1219,6 +1219,12 @@
 
             // 初始化情绪趋势图
             initializeMoodChart();
+
+            // 绑定重新生成评估按钮事件
+            const generateAssessmentBtn = document.querySelector('.generate-assessment-btn');
+            if (generateAssessmentBtn) {
+                generateAssessmentBtn.addEventListener('click', generatePsychologicalAssessment);
+            }
 
             // 设置侧边栏用户名
             const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1715,22 +1721,49 @@
                     assessmentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
                     assessmentBtn.disabled = true;
                     
-                    // 模拟从服务器获取心理评估数据
-                    // 在实际应用中，这里会调用AI服务并结合用户的情绪记录数据
-                    setTimeout(() => {
-                        // 恢复按钮状态
-                        assessmentBtn.innerHTML = originalText;
-                        assessmentBtn.disabled = false;
-                        
-                        // 显示成功消息
-                        showMessage('心理评估报告已更新！', 'success');
-                    }, 1500);
+                    // 从localStorage获取用户的情绪记录数据
+                    let moodRecords = JSON.parse(localStorage.getItem('moodRecords') || '[]');
                     
-                    // 在实际实现中，这里会：
-                    // 1. 从localStorage或服务器获取用户的情绪记录数据
-                    // 2. 调用GLM大模型进行分析
-                    // 3. 结合情绪数据和AI分析生成个性化评估报告
-                    // 4. 更新页面上的评估内容
+                    // 按日期排序，最新的在前面
+                    moodRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    // 模拟调用GLM大模型进行心理评估（在实际应用中应该调用真实API）
+                    // 这里我们模拟一个响应
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    // 模拟的评估数据
+                    const assessmentData = {
+                        emotionStatus: '稳定积极',
+                        mentalHealthIndex: '85/100',
+                        trendAnalysis: '逐渐改善',
+                        emotionDistribution: [
+                            '焦虑: 10%',
+                            '压力: 15%',
+                            '平静: 30%',
+                            '愉悦: 45%'
+                        ],
+                        aiInsights: [
+                            '近期情绪状态较为稳定，积极情绪占主导',
+                            '建议继续保持良好的生活习惯',
+                            '可尝试新的放松技巧以进一步提升心理健康'
+                        ],
+                        mentalHealthAdvice: [
+                            '保持规律作息，充足睡眠',
+                            '适度运动，增强身体素质',
+                            '培养兴趣爱好，丰富生活内容',
+                            '与亲友保持良好沟通，分享情感'
+                        ]
+                    };
+                    
+                    // 更新页面上的评估内容
+                    updateAssessmentContent(assessmentData);
+                    
+                    // 显示成功消息
+                    showMessage('心理评估报告已更新！', 'success');
+                    
+                    // 恢复按钮状态
+                    assessmentBtn.innerHTML = originalText;
+                    assessmentBtn.disabled = false;
                     
                 } catch (error) {
                     console.error('生成心理评估报告失败:', error);
@@ -1743,6 +1776,60 @@
                 }
             }
             
+            // 更新心理评估内容
+            function updateAssessmentContent(assessmentData) {
+                // 更新情绪状态
+                const emotionStatus = document.querySelector('.summary-card .card-value');
+                if (emotionStatus && assessmentData.emotionStatus) {
+                    emotionStatus.textContent = assessmentData.emotionStatus;
+                }
+                
+                // 更新心理健康指数
+                const mentalHealthIndex = document.querySelectorAll('.summary-card .card-value')[1];
+                if (mentalHealthIndex && assessmentData.mentalHealthIndex) {
+                    mentalHealthIndex.textContent = assessmentData.mentalHealthIndex;
+                }
+                
+                // 更新趋势分析
+                const trendAnalysis = document.querySelectorAll('.summary-card .card-value')[2];
+                if (trendAnalysis && assessmentData.trendAnalysis) {
+                    trendAnalysis.textContent = assessmentData.trendAnalysis;
+                }
+                
+                // 更新情绪分布
+                const emotionDistribution = document.querySelector('.analysis-section ul');
+                if (emotionDistribution && assessmentData.emotionDistribution) {
+                    emotionDistribution.innerHTML = '';
+                    assessmentData.emotionDistribution.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        emotionDistribution.appendChild(li);
+                    });
+                }
+                
+                // 更新AI洞察与建议
+                const aiInsights = document.querySelectorAll('.analysis-section ul')[1];
+                if (aiInsights && assessmentData.aiInsights) {
+                    aiInsights.innerHTML = '';
+                    assessmentData.aiInsights.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        aiInsights.appendChild(li);
+                    });
+                }
+                
+                // 更新心理健康建议
+                const mentalHealthAdvice = document.querySelectorAll('.analysis-section ol')[0];
+                if (mentalHealthAdvice && assessmentData.mentalHealthAdvice) {
+                    mentalHealthAdvice.innerHTML = '';
+                    assessmentData.mentalHealthAdvice.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = item;
+                        mentalHealthAdvice.appendChild(li);
+                    });
+                }
+            }
+
             // 生成AI个性化健身计划
             async function generateAIPlan() {
                 try {

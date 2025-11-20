@@ -695,6 +695,9 @@
             
             // 检查用户登录状态
             checkUserStatus();
+            
+            // 绑定用户菜单事件
+            bindUserMenuEvents();
         });
         
         // 开始冥想
@@ -877,23 +880,21 @@
                 const profileBtn = document.getElementById('profile-btn');
                 
                 if (userButton) {
-                    userButton.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        if (userMenu) {
-                            userMenu.classList.toggle('show');
-                        }
-                    });
+                    // 移除可能存在的旧事件监听器，防止重复绑定
+                    userButton.removeEventListener('click', handleUserButtonClick);
+                    // 添加新的事件监听器
+                    userButton.addEventListener('click', handleUserButtonClick);
                 }
                 
                 // 添加用户头像双击事件，直接跳转到个人主页
                 if (userButton) {
-                    userButton.addEventListener('dblclick', function() {
-                        window.location.href = 'profile.html';
-                    });
+                    userButton.removeEventListener('dblclick', handleUserProfileClick);
+                    userButton.addEventListener('dblclick', handleUserProfileClick);
                 }
                 
                 if (profileBtn) {
                     profileBtn.addEventListener('click', function() {
+                        // 跳转到用户个人信息页面
                         window.location.href = 'profile.html';
                     });
                 }
@@ -917,6 +918,9 @@
                         if (userButton) userButton.textContent = 'U'; // 重置为默认值
                         
                         alert('已成功登出');
+                        
+                        // 如果在聊天界面，滚动到顶部
+                        window.scrollTo(0, 0);
                     });
                 }
                 
@@ -931,6 +935,24 @@
             }
         }
         
+        // 用户按钮点击事件处理函数
+        function handleUserButtonClick(e) {
+            try {
+                const userMenu = document.getElementById('user-menu');
+                if (userMenu) {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('show');
+                }
+            } catch (error) {
+                console.error('Error in user button click handler:', error);
+            }
+        }
+        
+        // 添加这个函数来处理用户头像双击跳转到个人主页
+        function handleUserProfileClick() {
+            window.location.href = 'profile.html';
+        }
+
         // 跳转到聊天功能
         function goToChat() {
             try {
