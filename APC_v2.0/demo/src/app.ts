@@ -34,6 +34,16 @@ function signToken(payload: AuthPayload, expiresIn: SignOptions['expiresIn'] = '
     return jwt.sign(payload as object, JWT_SECRET, options);
 }
 
+/**
+ * 刷新token的函数
+ * @param payload 认证载荷
+ * @returns 新的token
+ */
+function refreshToken(payload: AuthPayload) {
+    // 刷新token有效期为7天
+    return signToken(payload, '7d');
+}
+
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
     const header = req.headers.authorization;
     if (!header) return res.status(401).json({ error: 'Unauthorized' });
@@ -285,6 +295,37 @@ app.put('/api/users/profile', requireAuth, async (req, res) => {
     }
 });
 
+// 刷新token端点
+app.post('/api/auth/refresh-token', async (req, res) => {
+    try {
+        const header = req.headers.authorization;
+        if (!header) return res.status(401).json({ error: 'Unauthorized' });
+
+        // 正确处理Bearer token
+        let token = header;
+        if (header.startsWith('Bearer ')) {
+            token = header.substring(7); // 移除 'Bearer ' 前缀
+        }
+
+        // 验证token（即使过期也继续解析）
+        const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as AuthPayload;
+        
+        // 为已认证的用户生成新的token
+        const newToken = refreshToken(decoded);
+        
+        res.json({ 
+            token: newToken,
+            message: 'Token refreshed successfully'
+        });
+    } catch (error) {
+        console.error('Token refresh error:', error);
+        if (error instanceof jwt.JsonWebTokenError) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+        res.status(500).json({ error: 'Failed to refresh token' });
+    }
+});
+
 // AI咨询会话端点
 interface ConsultationRequest {
   user_query: string;
@@ -310,7 +351,7 @@ app.post('/api/consultations', requireAuth, async (req, res) => {
     }
     
     // 确定要使用的AI模型类型
-    let modelType = AIModelType.MOCK;
+    let modelType = AIModelType.GLM_4_5_FLASH;
     const modelEnv = process.env.AI_MODEL_TYPE;
     
     console.log('环境变量检查:', { 
@@ -319,8 +360,8 @@ app.post('/api/consultations', requireAuth, async (req, res) => {
       GLM_API_BASE: process.env.GLM_API_BASE
     });
     
-    if (modelEnv === 'glm' || modelEnv === 'glm-4v') {
-      modelType = modelEnv === 'glm-4v' ? AIModelType.GLM_4V : AIModelType.GLM;
+    if (modelEnv === 'glm' || modelEnv === 'glm-4.5-flash') {
+      modelType = AIModelType.GLM_4_5_FLASH;
     }
     
     // 调用AI模型
