@@ -1721,39 +1721,35 @@
                     assessmentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
                     assessmentBtn.disabled = true;
                     
+                    // 获取JWT token
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        throw new Error('用户未登录');
+                    }
+                    
                     // 从localStorage获取用户的情绪记录数据
                     let moodRecords = JSON.parse(localStorage.getItem('moodRecords') || '[]');
                     
                     // 按日期排序，最新的在前面
                     moodRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
                     
-                    // 模拟调用GLM大模型进行心理评估（在实际应用中应该调用真实API）
-                    // 这里我们模拟一个响应
-                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    // 调用GLM大模型进行心理评估
+                    const aiResponse = await fetch('/api/ai/psychological-assessment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            moodRecords: moodRecords
+                        })
+                    });
                     
-                    // 模拟的评估数据
-                    const assessmentData = {
-                        emotionStatus: '稳定积极',
-                        mentalHealthIndex: '85/100',
-                        trendAnalysis: '逐渐改善',
-                        emotionDistribution: [
-                            '焦虑: 10%',
-                            '压力: 15%',
-                            '平静: 30%',
-                            '愉悦: 45%'
-                        ],
-                        aiInsights: [
-                            '近期情绪状态较为稳定，积极情绪占主导',
-                            '建议继续保持良好的生活习惯',
-                            '可尝试新的放松技巧以进一步提升心理健康'
-                        ],
-                        mentalHealthAdvice: [
-                            '保持规律作息，充足睡眠',
-                            '适度运动，增强身体素质',
-                            '培养兴趣爱好，丰富生活内容',
-                            '与亲友保持良好沟通，分享情感'
-                        ]
-                    };
+                    if (!aiResponse.ok) {
+                        throw new Error('AI心理评估失败');
+                    }
+                    
+                    const assessmentData = await aiResponse.json();
                     
                     // 更新页面上的评估内容
                     updateAssessmentContent(assessmentData);

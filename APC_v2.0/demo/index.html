@@ -884,32 +884,32 @@
             <div class="container">
                 <h2 class="section-title">核心功能</h2>
                 <div class="features-grid">
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('ai-counselor.html')">
                         <div class="feature-icon">💬</div>
                         <h3>AI心理聊天</h3>
                         <p>与富有同理心的AI心理咨询师进行深度对话，获得个性化建议和支持。</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('emotion-tracking.html')">
                         <div class="feature-icon">📊</div>
                         <h3>情绪追踪</h3>
                         <p>记录每日情绪变化，可视化呈现情绪波动趋势，深入了解自己。</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('cognitive-restructuring.html')">
                         <div class="feature-icon">🧠</div>
                         <h3>认知重构</h3>
                         <p>识别并改变负面思维模式，培养更积极健康的心理习惯。</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('meditation.html')">
                         <div class="feature-icon">🧘</div>
                         <h3>冥想练习</h3>
                         <p>引导式冥想和呼吸练习，帮助您放松身心，减轻压力。</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('psychological-tests.html')">
                         <div class="feature-icon">📝</div>
                         <h3>心理测试</h3>
                         <p>专业心理评估工具，帮助您更好地了解自己的心理状态。</p>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card" onclick="navigateToFeature('knowledge-base.html')">
                         <div class="feature-icon">📚</div>
                         <h3>知识库</h3>
                         <p>丰富的心理健康知识和自助技巧，随时查阅学习。</p>
@@ -1371,6 +1371,471 @@
                 }
             } catch (error) {
                 console.error('Error in window.onclick:', error);
+            }
+        }
+        
+        // 切换登录/注册表单
+        function toggleForms() {
+            try {
+                const loginForm = document.getElementById('login-form');
+                const registerForm = document.getElementById('register-form');
+                
+                if (loginForm && registerForm) {
+                    if (loginForm.style.display === 'none') {
+                        loginForm.style.display = 'block';
+                        registerForm.style.display = 'none';
+                    } else {
+                        loginForm.style.display = 'none';
+                        registerForm.style.display = 'block';
+                    }
+                } else {
+                    console.error('Login or register form not found');
+                }
+            } catch (error) {
+                console.error('Error in toggleForms:', error);
+            }
+        }
+        
+        // 更新登录函数以保存用户信息
+        async function login() {
+            try {
+                const usernameInput = document.getElementById('login-username');
+                const passwordInput = document.getElementById('login-password');
+                
+                if (!usernameInput || !passwordInput) {
+                    alert('表单元素未找到');
+                    return;
+                }
+                
+                const username = usernameInput.value;
+                const password = passwordInput.value;
+                
+                if (!username || !password) {
+                    alert('请填写用户名和密码');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    console.log('Login response:', data);
+                    
+                    if (response.ok && data.token) {
+                        // 保存token和用户信息到localStorage
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify({ 
+                            username: data.user?.username || username,
+                            userId: data.user?.id
+                        }));
+                        
+                        // 隐藏模态框
+                        hideAuthModal();
+                        
+                        // 清空表单
+                        usernameInput.value = '';
+                        passwordInput.value = '';
+                        
+                        // 更新用户界面
+                        checkUserStatus();
+                        
+                        // 设置用户按钮显示首字母
+                        const userButton = document.getElementById('user-button');
+                        if (userButton) {
+                            userButton.textContent = username.charAt(0).toUpperCase();
+                        }
+                        
+                        // 重新绑定用户菜单事件
+                        bindUserMenuEvents();
+                        
+                        // 检查用户是否需要完善个人信息
+                        const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                        if (!userProfile.completed && !userProfile.skipped) {
+                            // 跳转到个人信息页面
+                            setTimeout(() => {
+                                window.location.href = 'profile.html';
+                            }, 100);
+                            return;
+                        }
+                        
+                        // 跳转到聊天界面
+                        setTimeout(() => {
+                            try {
+                                const chatSection = document.getElementById('chat');
+                                if (chatSection) {
+                                    chatSection.scrollIntoView({ behavior: 'smooth' });
+                                }
+                            } catch (error) {
+                                console.error('Error in scrollToChat timeout:', error);
+                            }
+                        }, 100);
+                        
+                        alert('登录成功！');
+                    } else {
+                        // 根据不同错误类型显示具体信息
+                        let errorMessage = '登录失败';
+                        if (data.error) {
+                            errorMessage = data.error;
+                        }
+                        alert(errorMessage);
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('登录时发生错误，请稍后重试');
+                }
+            } catch (error) {
+                console.error('Error in login function:', error);
+            }
+        }
+        
+        // 注册功能
+        async function register() {
+            try {
+                const usernameInput = document.getElementById('register-username');
+                const passwordInput = document.getElementById('register-password');
+                const emailInput = document.getElementById('register-email');
+                
+                if (!usernameInput || !passwordInput) {
+                    alert('表单元素未找到');
+                    return;
+                }
+                
+                const username = usernameInput.value;
+                const password = passwordInput.value;
+                const email = emailInput ? emailInput.value : '';
+                
+                if (!username || !password) {
+                    alert('请填写用户名和密码');
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    alert('密码长度至少为6位');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password, email })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // 保存token和用户信息到localStorage
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify({ 
+                            username: data.user?.username || username,
+                            userId: data.user?.id
+                        }));
+                        
+                        // 隐藏模态框
+                        hideAuthModal();
+                        
+                        // 清空注册表单
+                        usernameInput.value = '';
+                        passwordInput.value = '';
+                        if (emailInput) {
+                            emailInput.value = '';
+                        }
+                        
+                        // 更新用户界面
+                        checkUserStatus();
+                        
+                        // 设置用户按钮显示首字母
+                        const userButton = document.getElementById('user-button');
+                        if (userButton) {
+                            userButton.textContent = username.charAt(0).toUpperCase();
+                        }
+                        
+                        // 重新绑定用户菜单事件
+                        bindUserMenuEvents();
+                        
+                        // 跳转到个人信息页面让用户完善信息
+                        setTimeout(() => {
+                            window.location.href = 'profile.html';
+                        }, 100);
+                        
+                        alert('注册成功！');
+                    } else {
+                        const errorMessage = data.error || '注册失败';
+                        alert('注册失败: ' + errorMessage);
+                    }
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    alert('注册时发生错误，请稍后重试');
+                }
+            } catch (error) {
+                console.error('Error in register function:', error);
+            }
+        }
+        
+        // 检查用户状态并更新UI
+        function checkUserStatus() {
+            try {
+                const token = localStorage.getItem('token');
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                const userInfo = document.getElementById('user-info');
+                const authButton = document.getElementById('auth-button');
+                const userName = document.getElementById('user-name');
+                const userButton = document.getElementById('user-button');
+                const userProfileInfo = document.getElementById('user-profile-info');
+                const profileNickname = document.getElementById('profile-nickname');
+                const profileGender = document.getElementById('profile-gender');
+                const profileZodiac = document.getElementById('profile-zodiac');
+                const chatSection = document.getElementById('chat');
+                
+                if (token && user.username) {
+                    // 用户已登录
+                    if (userInfo) userInfo.style.display = 'block';
+                    if (authButton) authButton.style.display = 'none';
+                    if (userName) userName.textContent = user.username;
+                    
+                    // 设置用户按钮显示首字母
+                    if (userButton) {
+                        userButton.textContent = user.username.charAt(0).toUpperCase();
+                    }
+                    
+                    // 显示用户个人信息
+                    if (userProfile && userProfile.completed && userProfileInfo) {
+                        userProfileInfo.style.display = 'block';
+                        
+                        if (profileNickname) {
+                            profileNickname.textContent = userProfile.nickname || '';
+                        }
+                        
+                        if (profileGender) {
+                            const genderText = userProfile.gender === 'female' ? '女' : 
+                                             userProfile.gender === 'male' ? '男' : '';
+                            profileGender.textContent = genderText ? ` ${genderText}` : '';
+                        }
+                        
+                        if (profileZodiac) {
+                            profileZodiac.textContent = userProfile.zodiac ? ` ${userProfile.zodiac}` : '';
+                        }
+                    } else if (userProfileInfo) {
+                        userProfileInfo.style.display = 'none';
+                    }
+                    
+                    // 重新绑定用户菜单事件
+                    bindUserMenuEvents();
+                    
+                    // 如果在聊天界面，显示聊天区域
+                    if (chatSection) {
+                        chatSection.style.display = 'block';
+                    }
+                    
+                } else {
+                    // 用户未登录
+                    if (userInfo) userInfo.style.display = 'none';
+                    if (authButton) authButton.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error checking user status:', error);
+            }
+        }
+
+        // 绑定用户菜单事件
+        function bindUserMenuEvents() {
+            try {
+                const userButton = document.getElementById('user-button');
+                const userMenu = document.getElementById('user-menu');
+                const logoutBtn = document.getElementById('logout-btn');
+                const profileBtn = document.getElementById('profile-btn');
+                
+                console.log('绑定用户菜单事件:', { userButton, userMenu, logoutBtn, profileBtn });
+                
+                if (userButton) {
+                    // 移除可能存在的旧事件监听器，防止重复绑定
+                    userButton.removeEventListener('click', handleUserButtonClick);
+                    // 添加新的事件监听器
+                    userButton.addEventListener('click', handleUserButtonClick);
+                }
+                
+                if (profileBtn) {
+                    profileBtn.addEventListener('click', function() {
+                        // 跳转到用户个人信息页面
+                        window.location.href = 'profile.html';
+                    });
+                }
+                
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', function() {
+                        // 清除用户信息
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('userProfile');
+                        
+                        // 隐藏用户菜单
+                        if (userMenu) userMenu.classList.remove('show');
+                        
+                        // 隐藏用户信息按钮，显示登录按钮
+                        const userInfo = document.getElementById('user-info');
+                        const authButton = document.getElementById('auth-button');
+                        const userButton = document.getElementById('user-button');
+                        if (userInfo) userInfo.style.display = 'none';
+                        if (authButton) authButton.style.display = 'block';
+                        if (userButton) userButton.textContent = 'U'; // 重置为默认值
+                        
+                        // 如果在聊天界面，滚动到顶部
+                        window.scrollTo(0, 0);
+                        
+                        alert('已成功登出');
+                    });
+                }
+                
+                // 点击页面其他地方隐藏菜单
+                document.addEventListener('click', function(e) {
+                    if (userMenu && !userMenu.contains(e.target) && userButton !== e.target) {
+                        userMenu.classList.remove('show');
+                    }
+                });
+            } catch (error) {
+                console.error('Error binding user menu events:', error);
+            }
+        }
+        
+        // 用户按钮点击事件处理函数
+        function handleUserButtonClick(e) {
+            console.log('用户按钮被点击');
+            try {
+                const userMenu = document.getElementById('user-menu');
+                if (userMenu) {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('show');
+                    console.log('用户菜单状态:', userMenu.classList.contains('show'));
+                }
+            } catch (error) {
+                console.error('Error in user button click handler:', error);
+            }
+        }
+        
+        // 在页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                // 获取DOM元素
+                const chatInput = document.getElementById('chat-input');
+                const sendButton = document.getElementById('send-button');
+                const chatMessages = document.querySelector('.chat-messages');
+                
+                // 检查用户登录状态并更新UI
+                checkUserStatus();
+
+                // 绑定发送按钮事件
+                try {
+                    if (sendButton) {
+                        sendButton.addEventListener('click', async function () {
+                            try {
+                                await sendMessage();
+                            } catch (error) {
+                                console.error('Error in send button click handler:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error binding send button event:', error);
+                }
+
+                // 绑定回车键事件
+                try {
+                    if (chatInput) {
+                        chatInput.addEventListener('keypress', function (e) {
+                            try {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    sendMessage();
+                                }
+                            } catch (error) {
+                                console.error('Error in keypress handler:', error);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error binding keypress event:', error);
+                }
+
+                // 滚动到聊天区域
+                window.scrollToChat = function() {
+                    try {
+                        const chatSection = document.getElementById('chat');
+                        if (chatSection) {
+                            chatSection.scrollIntoView({ behavior: 'smooth' });
+                            const chatInput = document.getElementById('chat-input');
+                            if (chatInput) {
+                                chatInput.focus();
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error in scrollToChat:', error);
+                    }
+                };
+                
+                // 初始化时添加系统提示词
+                addSystemPrompt();
+                
+                // 绑定用户菜单事件
+                bindUserMenuEvents();
+                
+                // 检查用户状态
+                checkUserStatus();
+            } catch (error) {
+                console.error('Error in DOMContentLoaded:', error);
+            }
+        });
+        
+        // 添加全局错误处理
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+        });
+
+        // 核心功能卡片跳转函数
+        function navigateToFeature(page) {
+            // 检查用户是否已登录
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // 未登录用户跳转到登录页面
+                showAuthModal();
+            } else {
+                // 已登录用户直接跳转到相应功能页面
+                window.location.href = page;
+            }
+        }
+
+        // 显示登录/注册模态框
+        function showAuthModal() {
+            try {
+                const modal = document.getElementById('auth-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                } else {
+                    console.error('Auth modal not found');
+                }
+            } catch (error) {
+                console.error('Error in showAuthModal:', error);
+            }
+        }
+        
+        // 隐藏模态框
+        function hideAuthModal() {
+            try {
+                const modal = document.getElementById('auth-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error in hideAuthModal:', error);
             }
         }
         
